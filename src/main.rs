@@ -2,7 +2,7 @@
 mod cli;
 use aws_authentication::*;
 use aws_ec2::find_instances_by_name;
-use aws_sdk_ec2::{client, config};
+use aws_sdk_ec2::client;
 use clap::Parser;
 use cli::Args;
 use tokio::time::error::Error;
