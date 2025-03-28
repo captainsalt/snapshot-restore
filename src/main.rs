@@ -12,13 +12,12 @@ mod aws_ec2;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
-    let config = get_config(Some(&args.profile))
-        .await
-        .to_builder()
+    let config = get_config(Some(&args.profile)).await;
+    let ec2_config = aws_sdk_ec2::config::Builder::from(&config)
         .endpoint_url("")
         .build();
 
-    let ec2_client = client::Client::new(&config);
+    let ec2_client = client::Client::from_conf(ec2_config);
     let instances = find_instances_by_name(&ec2_client, vec!["dw-instance-0"]).await;
 
     let instance_name = instances
