@@ -7,4 +7,5 @@ edition = "2024"
 aws-config = "1.6.1"
 aws-sdk-ec2 = "1.119.0"
 clap = { version = "4.5.34", features = ["derive"] }
+config = "0.15.11"
 tokio = { version = "1.44.1", features = ["full"] }

@@ -1,20 +1,36 @@
 #[allow(unused)]
+mod aws_authentication;
+mod aws_ec2;
 mod cli;
 use aws_authentication::*;
 use aws_ec2::find_instances_by_name;
 use aws_sdk_ec2::client;
 use clap::Parser;
 use cli::Args;
+use config::Config;
+use std::collections::HashMap;
 use tokio::time::error::Error;
-mod aws_authentication;
-mod aws_ec2;
+
+fn get_app_config() -> HashMap<String, String> {
+    Config::builder()
+        .add_source(config::File::with_name("settings.toml").required(true))
+        .build()
+        .unwrap()
+        .try_deserialize::<HashMap<String, String>>()
+        .unwrap()
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
-    let config = get_config(Some(&args.profile)).await;
-    let ec2_config = aws_sdk_ec2::config::Builder::from(&config)
-        .endpoint_url("")
+    let app_config = get_app_config();
+    let aws_profile = get_profile(Some(&args.profile)).await;
+    let ec2_config = aws_sdk_ec2::config::Builder::from(&aws_profile)
+        .endpoint_url(
+            app_config
+                .get("EC2_ENDPOINT")
+                .expect("No endpoint provided"),
+        )
         .build();
 
     let ec2_client = client::Client::from_conf(ec2_config);
