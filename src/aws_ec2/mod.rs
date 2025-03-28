@@ -1,4 +1,6 @@
-use std::{ops::Deref, time::Duration};
+#![allow(dead_code)]
+
+use std::time::Duration;
 
 use aws_sdk_ec2::{
     Client,
@@ -42,7 +44,7 @@ pub async fn find_instances_by_name(
         Some(vec![
             Filter::builder()
                 .name("tag:Name")
-                .set_values(Some(instance_names.iter().map(|s| s.to_string())))
+                .set_values(Some(instance_names.iter().map(|s| s.to_string()).collect()))
                 .build(),
         ]),
     )

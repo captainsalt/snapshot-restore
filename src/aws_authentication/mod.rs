@@ -1,5 +1,5 @@
 use aws_config::meta::region::RegionProviderChain;
-use aws_config::{BehaviorVersion, Region, SdkConfig};
+use aws_config::{BehaviorVersion, SdkConfig};
 
 // TODO: Get default region from config file
 // TODO: Fail if profile isn't found

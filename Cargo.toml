@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-aws-config = "1.6.0"
-aws-sdk-ec2 = "1.118.1"
+aws-config = "1.6.1"
+aws-sdk-ec2 = "1.119.0"
 clap = { version = "4.5.34", features = ["derive"] }
 tokio = { version = "1.44.1", features = ["full"] }

@@ -1,3 +1,4 @@
+#[allow(unused)]
 mod cli;
 use aws_authentication::*;
 use aws_ec2::find_instances_by_name;
@@ -16,19 +17,18 @@ async fn main() -> Result<(), Error> {
     let ec2_client = client::Client::new(&config);
     let instances = find_instances_by_name(&ec2_client, vec!["dw-instance-0"]).await;
 
-    print!(
-        "Found instance {}",
-        instances
-            .first()
-            .expect("No instances found")
-            .tags
-            .expect("No tags found")
-            .iter()
-            .find(|t| t.key.as_deref().unwrap_or_default() == "Name")
-            .unwrap()
-            .value
-            .unwrap_or_default()
-    );
+    let instance_name = instances
+        .first()
+        .and_then(|instance| {
+            instance.tags.as_ref().and_then(|tags| {
+                tags.iter()
+                    .find(|t| t.key.as_deref().unwrap_or_default() == "Name")
+            })
+        })
+        .and_then(|name_tag| name_tag.value.clone())
+        .unwrap_or_else(|| "No name found".to_string());
+
+    println!("Found instance: {}", instance_name);
 
     Ok(())
 }
