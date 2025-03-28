@@ -8,10 +8,4 @@ pub struct Args {
 
     #[arg(long)]
     pub regions: Vec<String>,
-
-    #[arg(long)]
-    pub backup: bool,
-
-    #[arg(long)]
-    pub restore: bool,
 }
