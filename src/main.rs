@@ -34,7 +34,7 @@ fn create_ec2_client(app_config: &AppConfig, aws_profile: &SdkConfig) -> aws_sdk
     client::Client::from_conf(ec2_config)
 }
 
-fn read_instance_names(input_file_path: String) -> Result<Vec<String>, std::io::Error> {
+fn read_instance_names(input_file_path: &String) -> Result<Vec<String>, std::io::Error> {
     Ok(fs::read_to_string(input_file_path)?
         .lines()
         .map(String::from)
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Error> {
     let aws_profile = get_profile(Some(&args.profile)).await;
     let ec2_client = create_ec2_client(&app_config, &aws_profile);
 
-    let instance_names = read_instance_names(args.instance_file);
+    let instance_names = read_instance_names(&args.instance_file);
     let instances = find_instances_by_name(&ec2_client, instance_names.unwrap()).await;
     let snapshots = get_instance_snapshots(&ec2_client, instances.first().unwrap()).await;
 
