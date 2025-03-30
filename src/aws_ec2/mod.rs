@@ -85,15 +85,6 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) {
 }
 
 pub async fn get_instance_snapshots(ec2_client: &Client, instance: &Instance) -> Vec<Snapshot> {
-    let instance_name = instance
-        .tags
-        .as_ref()
-        .and_then(|tags| tags.iter().find(|t| t.key.as_ref().unwrap() == "Name"))
-        .expect("Name tag should exist on instance")
-        .value
-        .as_ref()
-        .expect("Name tag should have a value");
-
     let volumes = instance
         .block_device_mappings
         .as_ref()
@@ -113,14 +104,23 @@ pub async fn get_instance_snapshots(ec2_client: &Client, instance: &Instance) ->
         )
     }
 
-    let snapshot_filter = Filter::builder()
-        .name("tag:Name")
-        .values(instance_name)
-        .build();
+    let instance_name = instance
+        .tags
+        .as_ref()
+        .and_then(|tags| tags.iter().find(|t| t.key.as_ref().unwrap() == "Name"))
+        .expect("Name tag should exist on instance")
+        .value
+        .as_ref()
+        .expect("Name tag should have a value");
 
     let snapshots = ec2_client
         .describe_snapshots()
-        .filters(snapshot_filter)
+        .filters(
+            Filter::builder()
+                .name("tag:Name")
+                .values(instance_name)
+                .build(),
+        )
         .send()
         .await
         .expect("Failed to describe snapshots")
