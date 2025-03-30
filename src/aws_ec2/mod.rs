@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 
-use std::time::Duration;
+use std::{ops::Deref, time::Duration};
 
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance},
+    types::{Filter, Instance, Snapshot},
+    waiters::volume_available,
 };
 
 async fn get_instances(ec2_client: &Client, filters: Option<Vec<Filter>>) -> Vec<Instance> {
@@ -51,7 +52,7 @@ pub async fn find_instances_by_name(
     .await
 }
 
-pub async fn stop_instance(ec2_client: &Client, instance: Instance) {
+pub async fn stop_instance(ec2_client: &Client, instance: &Instance) {
     ec2_client
         .stop_instances()
         .instance_ids(instance.instance_id.as_deref().unwrap_or_default())
@@ -67,7 +68,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: Instance) {
         .expect("Error waiting for instances to stop");
 }
 
-pub async fn start_instance(ec2_client: &Client, instance: Instance) {
+pub async fn start_instance(ec2_client: &Client, instance: &Instance) {
     ec2_client
         .start_instances()
         .instance_ids(instance.instance_id.as_deref().unwrap_or_default())
@@ -81,4 +82,50 @@ pub async fn start_instance(ec2_client: &Client, instance: Instance) {
         .wait(Duration::from_secs(600_000))
         .await
         .expect("Error waiting for instances to start");
+}
+
+pub async fn get_instance_snapshots(ec2_client: &Client, instance: &Instance) -> Vec<Snapshot> {
+    let instance_name = instance
+        .tags
+        .as_ref()
+        .and_then(|tags| tags.iter().find(|t| t.key.as_ref().unwrap() == "Name"))
+        .expect("Name tag should exist on instance")
+        .value
+        .as_ref()
+        .expect("Name tag should have a value");
+
+    let volumes = instance
+        .block_device_mappings
+        .as_ref()
+        .expect("Instance should have block devices attached");
+
+    for volume in volumes {
+        print!(
+            "{} -> {}",
+            volume.device_name.as_ref().expect("Device should exist"),
+            volume
+                .ebs
+                .as_ref()
+                .expect("EBS volume should exist")
+                .volume_id
+                .as_ref()
+                .expect("Volume ID should exist")
+        )
+    }
+
+    let snapshot_filter = Filter::builder()
+        .name("tag:Name")
+        .values(instance_name)
+        .build();
+
+    let snapshots = ec2_client
+        .describe_snapshots()
+        .filters(snapshot_filter)
+        .send()
+        .await
+        .expect("Failed to describe snapshots")
+        .snapshots
+        .unwrap_or_default();
+
+    snapshots
 }
