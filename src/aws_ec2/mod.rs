@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 
-use std::{ops::Deref, time::Duration};
+use std::time::Duration;
 
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
     types::{Filter, Instance, Snapshot},
-    waiters::volume_available,
 };
 
 async fn get_instances(ec2_client: &Client, filters: Option<Vec<Filter>>) -> Vec<Instance> {
