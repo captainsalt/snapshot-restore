@@ -8,4 +8,7 @@ pub struct Args {
 
     #[arg(long)]
     pub regions: Vec<String>,
+
+    #[arg(long, short('f'))]
+    pub instance_file: String,
 }

@@ -37,7 +37,7 @@ pub async fn find_instances_by_id(ec2_client: &Client, instance_ids: Vec<String>
 
 pub async fn find_instances_by_name(
     ec2_client: &Client,
-    instance_names: Vec<&str>,
+    instance_names: Vec<String>,
 ) -> Vec<Instance> {
     get_instances(
         ec2_client,
