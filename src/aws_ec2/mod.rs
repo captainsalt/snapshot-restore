@@ -120,7 +120,7 @@ pub async fn get_instance_snapshots(
     Ok(snapshots.snapshots)
 }
 
-pub async fn get_most_recent_snapshot<'a>(
+pub async fn get_most_recent_snapshots<'a>(
     instance: &'a Instance,
     snapshots: &Vec<Snapshot>,
 ) -> Vec<Snapshot> {
@@ -169,3 +169,5 @@ pub async fn get_most_recent_snapshot<'a>(
 
     desired_snapshots
 }
+
+pub async fn create_volume_from_snapshot() {}

@@ -3,7 +3,7 @@ mod aws_ec2;
 mod cli;
 use aws_authentication::*;
 use aws_config::SdkConfig;
-use aws_ec2::{find_instances_by_name, get_instance_snapshots, get_most_recent_snapshot};
+use aws_ec2::{find_instances_by_name, get_instance_snapshots, get_most_recent_snapshots};
 use clap::Parser;
 use cli::Args;
 use config::Config;
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Error> {
 
     let instance = instances.first().unwrap();
     let snapshots = get_instance_snapshots(&ec2_client, instance).await.unwrap();
-    let snapshots = get_most_recent_snapshot(instance, &snapshots.unwrap()).await;
+    let snapshots = get_most_recent_snapshots(instance, &snapshots.unwrap()).await;
 
     for snapshot in snapshots {
         println!(
