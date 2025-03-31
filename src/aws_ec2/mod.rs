@@ -1,12 +1,16 @@
 #![allow(dead_code)]
 
-use std::time::Duration;
-
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, Snapshot},
+    types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag},
 };
+use std::{ops::Deref, time::Duration};
+
+fn get_tag_value<'a>(tags: &'a Vec<Tag>, value: &str) -> Option<&'a Tag> {
+    tags.iter()
+        .find(|tag| tag.value().unwrap_or_default() == value)
+}
 
 async fn get_instances(ec2_client: &Client, filters: Option<Vec<Filter>>) -> Vec<Instance> {
     ec2_client
@@ -127,4 +131,46 @@ pub async fn get_instance_snapshots(ec2_client: &Client, instance: &Instance) ->
         .unwrap_or_default();
 
     snapshots
+}
+
+pub async fn get_most_recent_snapshot(
+    instance: &Instance,
+    snapshots: &Vec<Snapshot>,
+) -> Vec<Snapshot> {
+    let instance_block_devices = instance.block_device_mappings();
+    let mut snapshots: Vec<Snapshot> = snapshots.to_owned();
+
+    snapshots.sort_by(|a, b| {
+        let a_time = a.start_time().expect("Snapshot should have a start time");
+        let b_time = b.start_time().expect("Snapshot should have a start time");
+        b_time.cmp(&a_time)
+    });
+
+    let instance_snapshots = snapshots
+        .into_iter()
+        .filter(|snap| snap.state() == Some(&SnapshotState::Completed))
+        .filter(|snap| {
+            let instance_volume_ids = instance_block_devices
+                .iter()
+                .map(|b| b.ebs().unwrap().volume_id().unwrap())
+                .collect::<Vec<_>>();
+
+            instance_volume_ids.contains(&snap.volume_id().unwrap())
+        })
+        .collect::<Vec<Snapshot>>();
+
+    let mut desired_snapshots: Vec<Snapshot> = vec![];
+
+    for block_device in instance_block_devices {
+        let desired_snapshot = instance_snapshots
+            .iter()
+            .find(|snap| {
+                snap.volume_id == block_device.ebs().unwrap().volume_id().map(String::from)
+            })
+            .cloned();
+
+        desired_snapshots.push(desired_snapshot.unwrap());
+    }
+
+    desired_snapshots
 }
