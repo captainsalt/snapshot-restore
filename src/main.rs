@@ -4,7 +4,6 @@ mod cli;
 use aws_authentication::*;
 use aws_config::SdkConfig;
 use aws_ec2::{find_instances_by_name, get_instance_snapshots};
-use aws_sdk_ec2::client;
 use clap::Parser;
 use cli::Args;
 use config::Config;
@@ -29,7 +28,7 @@ fn create_ec2_client(app_config: &AppConfig, aws_profile: &SdkConfig) -> aws_sdk
         .clone()
         .build();
 
-    client::Client::from_conf(ec2_config)
+    aws_sdk_ec2::client::Client::from_conf(ec2_config)
 }
 
 fn read_instance_names(input_file_path: &String) -> Result<Vec<String>, std::io::Error> {
