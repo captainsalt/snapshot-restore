@@ -3,9 +3,9 @@
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag},
+    types::{Filter, Instance, Snapshot, SnapshotState, Tag},
 };
-use std::{ops::Deref, time::Duration};
+use std::time::Duration;
 
 fn get_tag_value<'a>(tags: &'a Vec<Tag>, value: &str) -> Option<&'a Tag> {
     tags.iter()
