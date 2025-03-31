@@ -49,8 +49,8 @@ async fn main() -> Result<(), Error> {
     let instances = find_instances_by_name(&ec2_client, instance_names.unwrap()).await;
 
     let instance = instances.first().unwrap();
-    let snapshots = get_instance_snapshots(&ec2_client, instance).await;
-    let snapshots = get_most_recent_snapshot(instance, &snapshots).await;
+    let snapshots = get_instance_snapshots(&ec2_client, instance).await.unwrap();
+    let snapshots = get_most_recent_snapshot(instance, &snapshots.unwrap()).await;
 
     for snapshot in snapshots {
         println!(
