@@ -63,26 +63,5 @@ async fn main() -> Result<(), Error> {
         )
     }
 
-    // for snapshot in snapshots {
-    //     print!(
-    //         "---
-    //         Completion time: {}
-    //         Snapshot ID: {}
-    //         Snapshot Name{}
-    //         ---\n",
-    //         snapshot
-    //             .completion_time()
-    //             .expect("Snapshot should have completion time"),
-    //         snapshot.snapshot_id().expect("Snapshot ID should exist"),
-    //         snapshot
-    //             .tags()
-    //             .iter()
-    //             .find(|t| t.key().unwrap() == "Name")
-    //             .unwrap()
-    //             .value()
-    //             .unwrap()
-    //     );
-    // }
-
     Ok(())
 }
