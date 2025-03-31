@@ -55,9 +55,11 @@ async fn main() -> Result<(), Error> {
     for snapshot in snapshots {
         println!(
             "---
-            {:?}
+            Volume ID: {:?}
+            Snapshot ID: {:?}
             ---",
             snapshot.volume_id(),
+            snapshot.snapshot_id()
         )
     }
 
