@@ -23,12 +23,10 @@ fn get_app_config() -> AppConfig {
 }
 
 fn create_ec2_client(app_config: &AppConfig, aws_profile: &SdkConfig) -> aws_sdk_ec2::Client {
+    let ec2_endpoint = app_config.get("EC2_ENDPOINT").cloned();
     let ec2_config = aws_sdk_ec2::config::Builder::from(aws_profile)
-        .endpoint_url(
-            app_config
-                .get("EC2_ENDPOINT")
-                .expect("No endpoint provided"),
-        )
+        .set_endpoint_url(ec2_endpoint)
+        .clone()
         .build();
 
     client::Client::from_conf(ec2_config)
