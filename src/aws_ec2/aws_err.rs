@@ -17,9 +17,9 @@ impl AwsError {
     }
 
     // Create an error from another error
-    pub fn from_err<E: fmt::Display>(message: &str, err: E) -> Self {
+    pub fn from_err<E: fmt::Display + std::fmt::Debug>(message: &str, err: E) -> Self {
         AwsError {
-            message: format!("{}: {}", message, err),
+            message: format!("{}: {:?}", message, err),
         }
     }
 }
