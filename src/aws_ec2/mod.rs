@@ -8,11 +8,6 @@ use std::time::Duration;
 mod aws_err;
 use aws_err::AwsError;
 
-fn get_tag_value<'a>(tags: &'a Vec<Tag>, value: &str) -> Option<&'a Tag> {
-    tags.iter()
-        .find(|tag| tag.value().unwrap_or_default() == value)
-}
-
 async fn get_instances(
     ec2_client: &Client,
     filters: Option<Vec<Filter>>,
