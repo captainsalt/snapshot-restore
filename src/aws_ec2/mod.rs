@@ -8,6 +8,8 @@ use std::time::Duration;
 mod aws_err;
 use aws_err::AwsError;
 
+const WAIT_DURATION: Duration = Duration::from_secs(3600); // hour
+
 async fn get_instances(
     ec2_client: &Client,
     filters: Option<Vec<Filter>>,
@@ -79,7 +81,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(
     ec2_client
         .wait_until_instance_stopped()
         .instance_ids(instance_id)
-        .wait(Duration::from_secs(3600))
+        .wait(WAIT_DURATION)
         .await
         .map_err(|err| {
             AwsError::from_err(
@@ -110,7 +112,7 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<
     ec2_client
         .wait_until_instance_status_ok()
         .instance_ids(instance_id)
-        .wait(Duration::from_secs(3600))
+        .wait(WAIT_DURATION)
         .await
         .map_err(|err| {
             AwsError::from_err(
@@ -266,7 +268,7 @@ pub async fn create_volumes_from_snapshots(
     ec2_client
         .wait_until_volume_available()
         .set_volume_ids(Some(volume_ids.clone()))
-        .wait(Duration::from_secs(3600))
+        .wait(WAIT_DURATION)
         .await
         .map_err(|err| AwsError::from_err("Error waiting for volumes to become available", err))?;
 
