@@ -1,6 +1,6 @@
 use aws_sdk_ec2::error::SdkError;
 use std::error::Error as StdError;
-use std::fmt;
+use std::fmt::{self};
 
 // A simple error type that just contains a message
 #[derive(Debug)]
@@ -17,7 +17,7 @@ impl AwsError {
     }
 
     // Create an error from another error
-    pub fn from_err<E: std::fmt::Display>(message: &str, err: E) -> Self {
+    pub fn from_err<E: fmt::Display>(message: &str, err: E) -> Self {
         AwsError {
             message: format!("{}: {}", message, err),
         }

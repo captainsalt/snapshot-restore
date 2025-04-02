@@ -3,13 +3,9 @@
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    error::SdkError,
-    operation::describe_snapshots::DescribeSnapshotsError,
     types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag},
 };
 use futures::future::join_all;
-use std::error::Error as StdError;
-use std::fmt;
 use std::time::Duration;
 mod aws_err;
 use aws_err::AwsError;
@@ -175,12 +171,8 @@ pub async fn get_most_recent_snapshots<'a>(
 
     // Sort snapshots by start time (newest first)
     snapshots.sort_by(|a, b| {
-        let a_time = a
-            .start_time()
-            .unwrap_or_else(|| panic!("Snapshot should have a start time"));
-        let b_time = b
-            .start_time()
-            .unwrap_or_else(|| panic!("Snapshot should have a start time"));
+        let a_time = a.start_time().expect("Snapshot should have start time");
+        let b_time = b.start_time().expect("Snapshot should have start time");
         b_time.cmp(&a_time)
     });
 
@@ -196,7 +188,7 @@ pub async fn get_most_recent_snapshots<'a>(
 
     // Build instance volume IDs
     let mut instance_volume_ids = Vec::new();
-    for device in instance_block_devices.iter() {
+    for device in instance_block_devices {
         let volume_id = get_volume_id(device)?;
         instance_volume_ids.push(volume_id);
     }
