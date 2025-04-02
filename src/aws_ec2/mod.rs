@@ -6,20 +6,20 @@ use aws_sdk_ec2::{
 use futures::future::{join_all, ok};
 use std::time::Duration;
 mod aws_err;
-use aws_err::AppError;
+use aws_err::ApplicationError;
 
 const WAIT_DURATION: Duration = Duration::from_secs(3600); // hour
 
 async fn get_instances(
     ec2_client: &Client,
     filters: Option<Vec<Filter>>,
-) -> Result<Vec<Instance>, AppError> {
+) -> Result<Vec<Instance>, ApplicationError> {
     let response = ec2_client
         .describe_instances()
         .set_filters(filters)
         .send()
         .await
-        .map_err(|err| AppError::from_err("Failed to describe instances", err))?;
+        .map_err(|err| ApplicationError::from_err("Failed to describe instances", err))?;
 
     Ok(response
         .reservations
@@ -33,7 +33,7 @@ async fn get_instances(
 pub async fn find_instances_by_id(
     ec2_client: &Client,
     instance_ids: Vec<String>,
-) -> Result<Vec<Instance>, AppError> {
+) -> Result<Vec<Instance>, ApplicationError> {
     get_instances(
         ec2_client,
         Some(vec![
@@ -49,7 +49,7 @@ pub async fn find_instances_by_id(
 pub async fn find_instances_by_name(
     ec2_client: &Client,
     instance_names: Vec<String>,
-) -> Result<Vec<Instance>, AppError> {
+) -> Result<Vec<Instance>, ApplicationError> {
     get_instances(
         ec2_client,
         Some(vec![
@@ -63,11 +63,14 @@ pub async fn find_instances_by_name(
 }
 
 #[allow(dead_code)]
-pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(), AppError> {
+pub async fn stop_instance(
+    ec2_client: &Client,
+    instance: &Instance,
+) -> Result<(), ApplicationError> {
     let instance_id = instance
         .instance_id
         .as_deref()
-        .ok_or_else(|| AppError::new("Missing instance ID"))?;
+        .ok_or_else(|| ApplicationError::new("Missing instance ID"))?;
 
     ec2_client
         .stop_instances()
@@ -75,7 +78,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(
         .send()
         .await
         .map_err(|err| {
-            AppError::from_err(&format!("Error stopping instance {}", instance_id), err)
+            ApplicationError::from_err(&format!("Error stopping instance {}", instance_id), err)
         })?;
 
     ec2_client
@@ -84,7 +87,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(
         .wait(WAIT_DURATION)
         .await
         .map_err(|err| {
-            AppError::from_err(
+            ApplicationError::from_err(
                 &format!("Error waiting for instance {} to stop", instance_id),
                 err,
             )
@@ -94,11 +97,14 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(
 }
 
 #[allow(dead_code)]
-pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<(), AppError> {
+pub async fn start_instance(
+    ec2_client: &Client,
+    instance: &Instance,
+) -> Result<(), ApplicationError> {
     let instance_id = instance
         .instance_id
         .as_deref()
-        .ok_or_else(|| AppError::new("Missing instance ID"))?;
+        .ok_or_else(|| ApplicationError::new("Missing instance ID"))?;
 
     ec2_client
         .start_instances()
@@ -106,7 +112,7 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<
         .send()
         .await
         .map_err(|err| {
-            AppError::from_err(&format!("Error starting instance {}", instance_id), err)
+            ApplicationError::from_err(&format!("Error starting instance {}", instance_id), err)
         })?;
 
     ec2_client
@@ -115,7 +121,7 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<
         .wait(WAIT_DURATION)
         .await
         .map_err(|err| {
-            AppError::from_err(
+            ApplicationError::from_err(
                 &format!("Error waiting for instance {} to start", instance_id),
                 err,
             )
@@ -127,18 +133,18 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<
 pub async fn get_instance_snapshots(
     ec2_client: &Client,
     instance: &Instance,
-) -> Result<Vec<Snapshot>, AppError> {
+) -> Result<Vec<Snapshot>, ApplicationError> {
     // Extract volume IDs from instance
     let mut volume_ids = Vec::new();
 
     for device in instance.block_device_mappings() {
         let ebs = device
             .ebs()
-            .ok_or_else(|| AppError::new("Instance should have EBS volume attached"))?;
+            .ok_or_else(|| ApplicationError::new("Instance should have EBS volume attached"))?;
 
         let volume_id = ebs
             .volume_id()
-            .ok_or_else(|| AppError::new("Volume should have ID"))?
+            .ok_or_else(|| ApplicationError::new("Volume should have ID"))?
             .to_string();
 
         volume_ids.push(volume_id);
@@ -155,7 +161,7 @@ pub async fn get_instance_snapshots(
         )
         .send()
         .await
-        .map_err(|err| AppError::from_err("Failed to describe snapshots", err))?;
+        .map_err(|err| ApplicationError::from_err("Failed to describe snapshots", err))?;
 
     Ok(snapshots.snapshots.unwrap_or_default())
 }
@@ -163,7 +169,7 @@ pub async fn get_instance_snapshots(
 pub async fn get_most_recent_snapshots<'a>(
     instance: &'a Instance,
     snapshots: &Vec<Snapshot>,
-) -> Result<Vec<Snapshot>, AppError> {
+) -> Result<Vec<Snapshot>, ApplicationError> {
     let instance_block_devices = instance.block_device_mappings();
     let mut snapshots: Vec<Snapshot> = snapshots.to_owned();
 
@@ -175,14 +181,15 @@ pub async fn get_most_recent_snapshots<'a>(
     });
 
     // Helper function to get volume ID from device mapping
-    let get_volume_id = |device_mapping: &'a InstanceBlockDeviceMapping| -> Result<&str, AppError> {
-        let ebs = device_mapping
-            .ebs()
-            .ok_or_else(|| AppError::new("EBS should exist"))?;
+    let get_volume_id =
+        |device_mapping: &'a InstanceBlockDeviceMapping| -> Result<&str, ApplicationError> {
+            let ebs = device_mapping
+                .ebs()
+                .ok_or_else(|| ApplicationError::new("EBS should exist"))?;
 
-        ebs.volume_id()
-            .ok_or_else(|| AppError::new("Volume ID should exist if EBS exists"))
-    };
+            ebs.volume_id()
+                .ok_or_else(|| ApplicationError::new("Volume ID should exist if EBS exists"))
+        };
 
     // Build instance volume IDs
     let mut instance_volume_ids = Vec::new();
@@ -214,7 +221,9 @@ pub async fn get_most_recent_snapshots<'a>(
             .iter()
             .find(|snap| snap.volume_id().unwrap_or_default() == volume_id)
             .cloned()
-            .ok_or_else(|| AppError::new(format!("No snapshot found for volume {}", volume_id)))?;
+            .ok_or_else(|| {
+                ApplicationError::new(format!("No snapshot found for volume {}", volume_id))
+            })?;
 
         desired_snapshots.push(desired_snapshot);
     }
@@ -226,14 +235,14 @@ pub async fn get_most_recent_snapshots<'a>(
 pub async fn create_volumes_from_snapshots(
     ec2_client: &Client,
     snapshots: &Vec<Snapshot>,
-) -> Result<Vec<Volume>, AppError> {
+) -> Result<Vec<Volume>, ApplicationError> {
     // Prepare futures for creating volumes
     let mut snapshot_futures = Vec::new();
 
     for snap in snapshots {
         let snapshot_id = snap
             .snapshot_id()
-            .ok_or_else(|| AppError::new("Snapshot should have ID"))?;
+            .ok_or_else(|| ApplicationError::new("Snapshot should have ID"))?;
 
         snapshot_futures.push(ec2_client.create_volume().snapshot_id(snapshot_id).send());
     }
@@ -250,7 +259,7 @@ pub async fn create_volumes_from_snapshots(
                 volume_ids.push(vol_id.into());
             }
             Err(err) => {
-                return Err(AppError::from_err("Error creating volume", err));
+                return Err(ApplicationError::from_err("Error creating volume", err));
             }
         }
     }
@@ -261,11 +270,13 @@ pub async fn create_volumes_from_snapshots(
         .set_volume_ids(Some(volume_ids))
         .wait(WAIT_DURATION)
         .await
-        .map_err(|err| AppError::from_err("Error waiting for volumes to become available", err))?;
+        .map_err(|err| {
+            ApplicationError::from_err("Error waiting for volumes to become available", err)
+        })?;
 
     match volume_creation_wait.as_result() {
         Ok(res) => Ok(res.volumes().to_owned()),
-        Err(err) => Err(AppError::from_err("Describe volumes error", err)),
+        Err(err) => Err(ApplicationError::from_err("Describe volumes error", err)),
     }
 }
 

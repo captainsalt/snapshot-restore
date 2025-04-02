@@ -4,38 +4,38 @@ use std::fmt::{self};
 
 // A simple error type that just contains a message
 #[derive(Debug)]
-pub struct AppError {
+pub struct ApplicationError {
     message: String,
 }
 
-impl AppError {
+impl ApplicationError {
     // Create a new error with a message
     pub fn new<S: Into<String>>(message: S) -> Self {
-        AppError {
+        ApplicationError {
             message: message.into(),
         }
     }
 
     // Create an error from another error
     pub fn from_err<E: fmt::Display + std::fmt::Debug>(message: &str, err: E) -> Self {
-        AppError {
+        ApplicationError {
             message: format!("{}: {:?}", message, err),
         }
     }
 }
 
 // Required for custom error types
-impl fmt::Display for AppError {
+impl fmt::Display for ApplicationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.message)
     }
 }
 
-impl StdError for AppError {}
+impl StdError for ApplicationError {}
 
 // Helper function for any SDK error
-impl<E> From<SdkError<E>> for AppError {
+impl<E> From<SdkError<E>> for ApplicationError {
     fn from(err: SdkError<E>) -> Self {
-        AppError::new(format!("AWS SDK error: {}", err))
+        ApplicationError::new(format!("AWS SDK error: {}", err))
     }
 }
