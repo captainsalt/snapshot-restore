@@ -69,7 +69,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) {
     ec2_client
         .wait_until_instance_stopped()
         .instance_ids(instance.instance_id.as_deref().unwrap_or_default())
-        .wait(Duration::from_secs(600_000))
+        .wait(Duration::from_secs(3600))
         .await
         .expect("Error waiting for instances to stop");
 }
@@ -85,7 +85,7 @@ pub async fn start_instance(ec2_client: &Client, instance: &Instance) {
     ec2_client
         .wait_until_instance_status_ok()
         .instance_ids(instance.instance_id.as_deref().unwrap_or_default())
-        .wait(Duration::from_secs(600_000))
+        .wait(Duration::from_secs(3600))
         .await
         .expect("Error waiting for instances to start");
 }
@@ -197,6 +197,6 @@ pub async fn create_volumes_from_snapshots(ec2_client: &Client, snapshots: &Vec<
     let _ = ec2_client
         .wait_until_volume_available()
         .set_volume_ids(Some(volume_ids))
-        .wait(Duration::from_secs(600_000))
+        .wait(Duration::from_secs(3600))
         .await;
 }
