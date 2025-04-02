@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
@@ -34,6 +32,7 @@ async fn get_instances(
         .collect())
 }
 
+#[allow(dead_code)]
 pub async fn find_instances_by_id(
     ec2_client: &Client,
     instance_ids: Vec<String>,
@@ -66,6 +65,7 @@ pub async fn find_instances_by_name(
     .await
 }
 
+#[allow(dead_code)]
 pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(), AwsError> {
     let instance_id = instance
         .instance_id
@@ -96,6 +96,7 @@ pub async fn stop_instance(ec2_client: &Client, instance: &Instance) -> Result<(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn start_instance(ec2_client: &Client, instance: &Instance) -> Result<(), AwsError> {
     let instance_id = instance
         .instance_id
@@ -224,6 +225,7 @@ pub async fn get_most_recent_snapshots<'a>(
     Ok(desired_snapshots)
 }
 
+#[allow(dead_code)]
 pub async fn create_volumes_from_snapshots(
     ec2_client: &Client,
     snapshots: &Vec<Snapshot>,
