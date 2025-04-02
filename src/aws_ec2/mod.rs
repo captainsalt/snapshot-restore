@@ -7,6 +7,7 @@ use aws_sdk_ec2::{
     operation::describe_snapshots::DescribeSnapshotsError,
     types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag},
 };
+use futures::future::join_all;
 use std::time::Duration;
 
 fn get_tag_value<'a>(tags: &'a Vec<Tag>, value: &str) -> Option<&'a Tag> {
@@ -170,4 +171,32 @@ pub async fn get_most_recent_snapshots<'a>(
     desired_snapshots
 }
 
-pub async fn create_volume_from_snapshot() {}
+pub async fn create_volumes_from_snapshots(ec2_client: &Client, snapshots: &Vec<Snapshot>) {
+    let snapshot_futures = snapshots
+        .iter()
+        .map(|snap| {
+            ec2_client
+                .create_volume()
+                .snapshot_id(snap.snapshot_id().expect("Snapshot should have ID"))
+                .send()
+        })
+        .collect::<Vec<_>>();
+
+    let snapshot_results = join_all(snapshot_futures).await;
+    let has_errors = snapshot_results.iter().any(Result::is_err);
+
+    if has_errors {
+        panic!("Error creating snapshots");
+    }
+
+    let volume_ids: Vec<String> = snapshot_results
+        .iter()
+        .map(|r| r.as_ref().unwrap().volume_id.clone().unwrap())
+        .collect();
+
+    let _ = ec2_client
+        .wait_until_volume_available()
+        .set_volume_ids(Some(volume_ids))
+        .wait(Duration::from_secs(600_000))
+        .await;
+}
