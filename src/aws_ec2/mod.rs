@@ -1,7 +1,7 @@
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag},
+    types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState},
 };
 use futures::future::join_all;
 use std::time::Duration;
