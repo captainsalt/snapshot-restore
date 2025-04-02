@@ -239,27 +239,18 @@ pub async fn create_volumes_from_snapshots(
     }
 
     // Execute all futures and collect results
-    let snapshot_results = join_all(snapshot_futures).await;
+    let volume_creation_results = join_all(snapshot_futures).await;
 
     // Process results and collect volume IDs
     let mut volume_ids = Vec::new();
-    for (i, result) in snapshot_results.into_iter().enumerate() {
+    for result in volume_creation_results {
         match result {
             Ok(resp) => {
-                if let Some(vol_id) = resp.volume_id {
-                    volume_ids.push(vol_id);
-                } else {
-                    return Err(AwsError::new(format!(
-                        "Volume ID missing for snapshot {}",
-                        i
-                    )));
-                }
+                let vol_id = resp.volume_id().expect("Volume should have ID");
+                volume_ids.push(vol_id.into());
             }
             Err(err) => {
-                return Err(AwsError::from_err(
-                    &format!("Error creating volume from snapshot {}", i),
-                    err,
-                ));
+                return Err(AwsError::from_err("Error creating volume", err));
             }
         }
     }
@@ -267,7 +258,7 @@ pub async fn create_volumes_from_snapshots(
     // Wait for volumes to become available
     ec2_client
         .wait_until_volume_available()
-        .set_volume_ids(Some(volume_ids.clone()))
+        .set_volume_ids(Some(volume_ids))
         .wait(WAIT_DURATION)
         .await
         .map_err(|err| AwsError::from_err("Error waiting for volumes to become available", err))?;
