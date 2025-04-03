@@ -1,3 +1,5 @@
+pub mod app_err;
+use app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
@@ -8,8 +10,6 @@ use aws_sdk_ec2::{
 };
 use futures::future::join_all;
 use std::time::Duration;
-mod app_err;
-use app_err::ApplicationError;
 
 const WAIT_DURATION: Duration = Duration::from_secs(3600); // hour
 
