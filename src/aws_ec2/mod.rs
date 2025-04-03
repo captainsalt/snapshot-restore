@@ -274,10 +274,10 @@ pub async fn create_volumes_from_snapshots(
             ApplicationError::from_err("Error waiting for volumes to become available", err)
         })?;
 
-    match volume_creation_wait.as_result() {
-        Ok(res) => Ok(res.volumes().to_owned()),
-        Err(err) => Err(ApplicationError::from_err("Describe volumes error", err)),
-    }
+    volume_creation_wait
+        .as_result()
+        .map_err(|err| ApplicationError::from_err("Describe volumes error", err))
+        .map(|r| r.volumes().to_owned())
 }
 
 #[allow(dead_code, unused)]
