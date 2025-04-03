@@ -244,26 +244,25 @@ pub async fn create_volumes_from_snapshots(
             .volume_id()
             .ok_or_else(|| ApplicationError::new("Volume should have ID"))?;
 
-        let describe_volumes = ec2_client
+        let device_name = ec2_client
             .describe_volumes()
             .volume_ids(volume_id)
             .send()
             .await
-            .map_err(|err| ApplicationError::from_err("Failed to describe volume", err))?;
-
-        let device = describe_volumes
+            .map_err(|err| ApplicationError::from_err("Failed to describe volume", err))?
             .volumes()
             .first()
             .expect("Volume should exist")
             .attachments()
             .first()
-            .expect("Volume should be attached")
+            .expect("Volume should be attached to instance")
             .device()
-            .expect("Device should exist");
+            .expect("Volume should be attached to device")
+            .to_string();
 
         let tag_specs = TagSpecification::builder()
             .resource_type(aws_sdk_ec2::types::ResourceType::Volume)
-            .tags(Tag::builder().key("device").value(device).build())
+            .tags(Tag::builder().key("device").value(device_name).build())
             .build();
 
         volume_creation_futures.push(
