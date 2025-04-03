@@ -1,7 +1,10 @@
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Volume},
+    types::{
+        Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Tag,
+        TagSpecification, Volume,
+    },
 };
 use futures::future::join_all;
 use std::time::Duration;
@@ -244,7 +247,39 @@ pub async fn create_volumes_from_snapshots(
             .snapshot_id()
             .ok_or_else(|| ApplicationError::new("Snapshot should have ID"))?;
 
-        volume_creation_futures.push(ec2_client.create_volume().snapshot_id(snapshot_id).send());
+        let volume_id = snap
+            .volume_id()
+            .ok_or_else(|| ApplicationError::new("Volume should have ID"))?;
+
+        let describe_volumes = ec2_client
+            .describe_volumes()
+            .volume_ids(volume_id)
+            .send()
+            .await
+            .map_err(|err| ApplicationError::from_err("Failed to describe volume", err))?;
+
+        let device = describe_volumes
+            .volumes()
+            .first()
+            .expect("Volume should exist")
+            .attachments()
+            .first()
+            .expect("Volume should be attached")
+            .device()
+            .expect("Device should exist");
+
+        let tag_specs = TagSpecification::builder()
+            .resource_type(aws_sdk_ec2::types::ResourceType::Volume)
+            .tags(Tag::builder().key("device").value(device).build())
+            .build();
+
+        volume_creation_futures.push(
+            ec2_client
+                .create_volume()
+                .tag_specifications(tag_specs)
+                .snapshot_id(snapshot_id)
+                .send(),
+        );
     }
 
     // Execute all futures and collect results
@@ -281,4 +316,4 @@ pub async fn create_volumes_from_snapshots(
 }
 
 #[allow(dead_code, unused)]
-pub async fn attach_new_volumes(ec2_client: &Client, instance: &Instance) {}
+pub async fn attach_new_volumes(ec2_client: &Client, instance: &Instance, volumes: Vec<Volume>) {}
