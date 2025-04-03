@@ -137,7 +137,6 @@ pub async fn get_instance_snapshots(
     ec2_client: &Client,
     instance: &Instance,
 ) -> Result<Vec<Snapshot>, ApplicationError> {
-    // Extract volume IDs from instance
     let mut volume_ids = Vec::new();
 
     for device in instance.block_device_mappings() {
@@ -153,7 +152,6 @@ pub async fn get_instance_snapshots(
         volume_ids.push(volume_id);
     }
 
-    // Get snapshots for these volumes
     let snapshots = ec2_client
         .describe_snapshots()
         .filters(
@@ -176,14 +174,12 @@ pub async fn get_most_recent_snapshots<'a>(
     let instance_block_devices = instance.block_device_mappings();
     let mut snapshots: Vec<Snapshot> = snapshots.to_owned();
 
-    // Sort snapshots by start time (newest first)
     snapshots.sort_by(|a, b| {
         let a_time = a.start_time().expect("Snapshot should have start time");
         let b_time = b.start_time().expect("Snapshot should have start time");
         b_time.cmp(&a_time)
     });
 
-    // Helper function to get volume ID from device mapping
     let get_volume_id =
         |device_mapping: &'a InstanceBlockDeviceMapping| -> Result<&str, ApplicationError> {
             let ebs = device_mapping
@@ -194,20 +190,17 @@ pub async fn get_most_recent_snapshots<'a>(
                 .ok_or_else(|| ApplicationError::new("Volume ID should exist if EBS exists"))
         };
 
-    // Build instance volume IDs
     let mut instance_volume_ids = Vec::new();
     for device in instance_block_devices {
         let volume_id = get_volume_id(device)?;
         instance_volume_ids.push(volume_id);
     }
 
-    // Filter for completed snapshots for our volumes
     let instance_snapshots = snapshots
         .into_iter()
         .filter(|snap| snap.state() == Some(&SnapshotState::Completed))
         .collect::<Vec<Snapshot>>();
 
-    // Find most recent snapshot for each volume
     let mut desired_snapshots: Vec<Snapshot> = vec![];
 
     for block_device in instance_block_devices {
@@ -232,7 +225,6 @@ pub async fn create_volumes_from_snapshots(
     ec2_client: &Client,
     snapshots: &Vec<Snapshot>,
 ) -> Result<Vec<Volume>, ApplicationError> {
-    // Prepare futures for creating volumes
     let mut volume_creation_futures = Vec::new();
 
     for snap in snapshots {
@@ -274,10 +266,8 @@ pub async fn create_volumes_from_snapshots(
         );
     }
 
-    // Execute all futures and collect results
     let volume_creation_results = join_all(volume_creation_futures).await;
 
-    // Process results and collect volume IDs
     let mut volume_ids = Vec::new();
     for result in volume_creation_results {
         match result {
@@ -291,7 +281,6 @@ pub async fn create_volumes_from_snapshots(
         }
     }
 
-    // Wait for volumes to become available
     let volume_creation_wait = ec2_client
         .wait_until_volume_available()
         .set_volume_ids(Some(volume_ids))
