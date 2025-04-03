@@ -8,8 +8,8 @@ use aws_sdk_ec2::{
 };
 use futures::future::join_all;
 use std::time::Duration;
-mod aws_err;
-use aws_err::ApplicationError;
+mod app_err;
+use app_err::ApplicationError;
 
 const WAIT_DURATION: Duration = Duration::from_secs(3600); // hour
 
