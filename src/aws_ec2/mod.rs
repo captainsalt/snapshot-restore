@@ -3,7 +3,7 @@ use aws_sdk_ec2::{
     client::Waiters,
     types::{Filter, Instance, InstanceBlockDeviceMapping, Snapshot, SnapshotState, Volume},
 };
-use futures::future::{join_all, ok};
+use futures::future::join_all;
 use std::time::Duration;
 mod aws_err;
 use aws_err::ApplicationError;
@@ -237,18 +237,18 @@ pub async fn create_volumes_from_snapshots(
     snapshots: &Vec<Snapshot>,
 ) -> Result<Vec<Volume>, ApplicationError> {
     // Prepare futures for creating volumes
-    let mut snapshot_futures = Vec::new();
+    let mut volume_creation_futures = Vec::new();
 
     for snap in snapshots {
         let snapshot_id = snap
             .snapshot_id()
             .ok_or_else(|| ApplicationError::new("Snapshot should have ID"))?;
 
-        snapshot_futures.push(ec2_client.create_volume().snapshot_id(snapshot_id).send());
+        volume_creation_futures.push(ec2_client.create_volume().snapshot_id(snapshot_id).send());
     }
 
     // Execute all futures and collect results
-    let volume_creation_results = join_all(snapshot_futures).await;
+    let volume_creation_results = join_all(volume_creation_futures).await;
 
     // Process results and collect volume IDs
     let mut volume_ids = Vec::new();

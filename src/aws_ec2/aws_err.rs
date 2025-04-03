@@ -17,7 +17,7 @@ impl ApplicationError {
     }
 
     // Create an error from another error
-    pub fn from_err<E: fmt::Display + std::fmt::Debug>(message: &str, err: E) -> Self {
+    pub fn from_err<E: std::fmt::Debug>(message: &str, err: E) -> Self {
         ApplicationError {
             message: format!("{}: {:?}", message, err),
         }
