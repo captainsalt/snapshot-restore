@@ -11,7 +11,6 @@ use clap::Parser;
 use cli_args::Args;
 use config::Config;
 use std::{collections::HashMap, fs};
-use tokio::time::error::Error;
 
 type AppConfig = HashMap<String, String>;
 
