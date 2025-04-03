@@ -20,7 +20,7 @@ async fn get_instances(
         .set_filters(filters)
         .send()
         .await
-        .map_err(|err| ApplicationError::from_err("Failed to describe instances", err))?;
+        .map_err(ApplicationError::from)?;
 
     Ok(response
         .reservations
@@ -79,9 +79,7 @@ pub async fn stop_instance(
         .instance_ids(instance_id)
         .send()
         .await
-        .map_err(|err| {
-            ApplicationError::from_err(&format!("Error stopping instance {}", instance_id), err)
-        })?;
+        .map_err(ApplicationError::from)?;
 
     ec2_client
         .wait_until_instance_stopped()
@@ -113,9 +111,7 @@ pub async fn start_instance(
         .instance_ids(instance_id)
         .send()
         .await
-        .map_err(|err| {
-            ApplicationError::from_err(&format!("Error starting instance {}", instance_id), err)
-        })?;
+        .map_err(ApplicationError::from)?;
 
     ec2_client
         .wait_until_instance_status_ok()
@@ -161,7 +157,7 @@ pub async fn get_instance_snapshots(
         )
         .send()
         .await
-        .map_err(|err| ApplicationError::from_err("Failed to describe snapshots", err))?;
+        .map_err(ApplicationError::from)?;
 
     Ok(snapshots.snapshots.unwrap_or_default())
 }
@@ -231,7 +227,7 @@ pub async fn create_volumes_from_snapshots(
             .volume_ids(volume_id)
             .send()
             .await
-            .map_err(|err| ApplicationError::from_err("Failed to describe volume", err))?
+            .map_err(ApplicationError::from)?
             .volumes()
             .first()
             .ok_or_else(|| ApplicationError::new("Volume should exist"))?
@@ -326,7 +322,7 @@ pub async fn attach_new_volumes(
             .device(device_name)
             .send()
             .await
-            .map_err(|err| ApplicationError::from_err("Error detaching volume", err))?;
+            .map_err(ApplicationError::from)?;
 
         // Attach the new volume
         ec2_client
@@ -336,7 +332,7 @@ pub async fn attach_new_volumes(
             .device(device_name)
             .send()
             .await
-            .map_err(|err| ApplicationError::from_err("Error attaching volume", err))?;
+            .map_err(ApplicationError::from)?;
     }
 
     Ok(())
