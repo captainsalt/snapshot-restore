@@ -308,4 +308,52 @@ pub async fn create_volumes_from_snapshots(
 }
 
 #[allow(dead_code, unused)]
-pub async fn attach_new_volumes(ec2_client: &Client, instance: &Instance, volumes: Vec<Volume>) {}
+pub async fn attach_new_volumes(
+    ec2_client: &Client,
+    instance: &Instance,
+    volumes: Vec<Volume>,
+) -> Result<(), ApplicationError> {
+    let detach_volume = async |instance_id: &str, device: &str| {
+        ec2_client
+            .detach_volume()
+            .instance_id(instance_id)
+            .device(device)
+            .send()
+            .await
+            .map_err(|err| ApplicationError::from_err("Error detaching volume", err))
+    };
+
+    let attach_volume = async |instance_id: &str, volume_id: &str, device_mapping: &str| {
+        ec2_client
+            .attach_volume()
+            .instance_id(instance_id)
+            .volume_id(volume_id)
+            .device(device_mapping)
+            .send()
+            .await
+            .map_err(|err| ApplicationError::from_err("Error attaching volume", err))
+    };
+
+    for volume in instance.block_device_mappings() {
+        let device_name = volume.device_name();
+        let replacement_volume = volumes
+            .iter()
+            .find(|volume| volume.tags().iter().any(|tag| tag.value() == device_name))
+            .ok_or_else(|| {
+                ApplicationError::new("Could not find volume with expected device tag")
+            })?;
+
+        let instance_id = instance.instance_id().expect("Instance should have ID");
+        let device_name = device_name.expect("Device should exist");
+        let volume_id = volume
+            .ebs()
+            .expect("Ebs should exist")
+            .volume_id()
+            .expect("Volume ID should exist");
+
+        detach_volume(instance_id, device_name).await?;
+        attach_volume(instance_id, volume_id, device_name).await?;
+    }
+
+    Ok(())
+}
