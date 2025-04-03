@@ -1,5 +1,5 @@
 [package]
-name = "ec2_maestro"
+name = "snapshot_restore"
 version = "0.1.0"
 edition = "2024"
 
