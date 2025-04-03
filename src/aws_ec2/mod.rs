@@ -11,8 +11,9 @@ use aws_sdk_ec2::{
 use futures::future::join_all;
 use std::time::Duration;
 
-const WAIT_DURATION: Duration = Duration::from_secs(3600); // hour
+const WAIT_DURATION: Duration = Duration::from_secs(3600); // 1 hour
 
+/// Gets EC2 instances matching the optional filters
 async fn get_instances(
     ec2_client: &Client,
     filters: Option<Vec<Filter>>,
@@ -32,7 +33,7 @@ async fn get_instances(
         .collect())
 }
 
-#[allow(dead_code)]
+/// Finds EC2 instances by their instance IDs
 pub async fn find_instances_by_id(
     ec2_client: &Client,
     instance_ids: Vec<String>,
@@ -49,6 +50,7 @@ pub async fn find_instances_by_id(
     .await
 }
 
+/// Finds EC2 instances by their Name tags
 pub async fn find_instances_by_name(
     ec2_client: &Client,
     instance_names: Vec<String>,
@@ -58,14 +60,14 @@ pub async fn find_instances_by_name(
         Some(vec![
             Filter::builder()
                 .name("tag:Name")
-                .set_values(Some(instance_names.iter().map(|s| s.to_string()).collect()))
+                .set_values(Some(instance_names.clone()))
                 .build(),
         ]),
     )
     .await
 }
 
-#[allow(dead_code)]
+/// Stops an EC2 instance and waits until it's stopped
 pub async fn stop_instance(
     ec2_client: &Client,
     instance: &Instance,
@@ -99,7 +101,7 @@ pub async fn stop_instance(
     Ok(())
 }
 
-#[allow(dead_code)]
+/// Starts an EC2 instance and waits until it's running and status checks pass
 pub async fn start_instance(
     ec2_client: &Client,
     instance: &Instance,
@@ -133,23 +135,23 @@ pub async fn start_instance(
     Ok(())
 }
 
+/// Gets all snapshots for an instance's attached volumes
 pub async fn get_instance_snapshots(
     ec2_client: &Client,
     instance: &Instance,
 ) -> Result<Vec<Snapshot>, ApplicationError> {
-    let mut volume_ids = Vec::new();
+    let volume_ids = instance
+        .block_device_mappings()
+        .iter()
+        .filter_map(|device| {
+            device
+                .ebs()
+                .and_then(|ebs| ebs.volume_id().map(|id| id.to_string()))
+        })
+        .collect::<Vec<_>>();
 
-    for device in instance.block_device_mappings() {
-        let ebs = device
-            .ebs()
-            .ok_or_else(|| ApplicationError::new("Instance should have EBS volume attached"))?;
-
-        let volume_id = ebs
-            .volume_id()
-            .ok_or_else(|| ApplicationError::new("Volume should have ID"))?
-            .to_string();
-
-        volume_ids.push(volume_id);
+    if volume_ids.is_empty() {
+        return Ok(Vec::new());
     }
 
     let snapshots = ec2_client
@@ -157,7 +159,7 @@ pub async fn get_instance_snapshots(
         .filters(
             Filter::builder()
                 .name("volume-id")
-                .set_values(Some(volume_ids.clone()))
+                .set_values(Some(volume_ids))
                 .build(),
         )
         .send()
@@ -167,46 +169,36 @@ pub async fn get_instance_snapshots(
     Ok(snapshots.snapshots.unwrap_or_default())
 }
 
-pub async fn get_most_recent_snapshots<'a>(
-    instance: &'a Instance,
+/// Gets the most recent snapshot for each volume attached to the instance
+pub async fn get_most_recent_snapshots(
+    instance: &Instance,
     snapshots: &Vec<Snapshot>,
 ) -> Result<Vec<Snapshot>, ApplicationError> {
-    let instance_block_devices = instance.block_device_mappings();
-    let mut snapshots: Vec<Snapshot> = snapshots.to_owned();
+    let mut snapshots = snapshots.clone();
 
+    // Sort snapshots by start time (newest first)
     snapshots.sort_by(|a, b| {
         let a_time = a.start_time().expect("Snapshot should have start time");
         let b_time = b.start_time().expect("Snapshot should have start time");
         b_time.cmp(&a_time)
     });
 
-    let get_volume_id =
-        |device_mapping: &'a InstanceBlockDeviceMapping| -> Result<&str, ApplicationError> {
-            let ebs = device_mapping
-                .ebs()
-                .ok_or_else(|| ApplicationError::new("EBS should exist"))?;
-
-            ebs.volume_id()
-                .ok_or_else(|| ApplicationError::new("Volume ID should exist if EBS exists"))
-        };
-
-    let mut instance_volume_ids = Vec::new();
-    for device in instance_block_devices {
-        let volume_id = get_volume_id(device)?;
-        instance_volume_ids.push(volume_id);
-    }
-
-    let instance_snapshots = snapshots
+    // Filter snapshots to only include completed ones
+    let completed_snapshots = snapshots
         .into_iter()
         .filter(|snap| snap.state() == Some(&SnapshotState::Completed))
         .collect::<Vec<Snapshot>>();
 
-    let mut desired_snapshots: Vec<Snapshot> = vec![];
+    // Get the most recent snapshot for each volume attached to the instance
+    let mut result_snapshots = Vec::new();
+    for device in instance.block_device_mappings() {
+        let volume_id = device
+            .ebs()
+            .ok_or_else(|| ApplicationError::new("EBS should exist"))?
+            .volume_id()
+            .ok_or_else(|| ApplicationError::new("Volume ID should exist"))?;
 
-    for block_device in instance_block_devices {
-        let volume_id = get_volume_id(block_device)?;
-
-        let desired_snapshot = instance_snapshots
+        let snapshot = completed_snapshots
             .iter()
             .find(|snap| snap.volume_id().unwrap_or_default() == volume_id)
             .cloned()
@@ -214,18 +206,18 @@ pub async fn get_most_recent_snapshots<'a>(
                 ApplicationError::new(format!("No snapshot found for volume {}", volume_id))
             })?;
 
-        desired_snapshots.push(desired_snapshot);
+        result_snapshots.push(snapshot);
     }
 
-    Ok(desired_snapshots)
+    Ok(result_snapshots)
 }
 
-#[allow(dead_code)]
+/// Creates new volumes from snapshots and returns them
 pub async fn create_volumes_from_snapshots(
     ec2_client: &Client,
     snapshots: &Vec<Snapshot>,
 ) -> Result<Vec<Volume>, ApplicationError> {
-    let mut volume_creation_futures = Vec::new();
+    let mut volume_futures = Vec::new();
 
     for snap in snapshots {
         let snapshot_id = snap
@@ -236,6 +228,7 @@ pub async fn create_volumes_from_snapshots(
             .volume_id()
             .ok_or_else(|| ApplicationError::new("Volume should have ID"))?;
 
+        // Get the device name from the original volume
         let device_name = ec2_client
             .describe_volumes()
             .volume_ids(volume_id)
@@ -244,20 +237,22 @@ pub async fn create_volumes_from_snapshots(
             .map_err(|err| ApplicationError::from_err("Failed to describe volume", err))?
             .volumes()
             .first()
-            .expect("Volume should exist")
+            .ok_or_else(|| ApplicationError::new("Volume should exist"))?
             .attachments()
             .first()
-            .expect("Volume should be attached to instance")
+            .ok_or_else(|| ApplicationError::new("Volume should be attached"))?
             .device()
-            .expect("Volume should be attached to device")
+            .ok_or_else(|| ApplicationError::new("Volume should have device name"))?
             .to_string();
 
+        // Create a tag specification for the new volume
         let tag_specs = TagSpecification::builder()
             .resource_type(aws_sdk_ec2::types::ResourceType::Volume)
             .tags(Tag::builder().key("device").value(device_name).build())
             .build();
 
-        volume_creation_futures.push(
+        // Create the volume
+        volume_futures.push(
             ec2_client
                 .create_volume()
                 .tag_specifications(tag_specs)
@@ -266,22 +261,22 @@ pub async fn create_volumes_from_snapshots(
         );
     }
 
-    let volume_creation_results = join_all(volume_creation_futures).await;
+    // Wait for all volume creations to complete
+    let volume_results = join_all(volume_futures).await;
 
-    let mut volume_ids = Vec::new();
-    for result in volume_creation_results {
-        match result {
-            Ok(resp) => {
-                let vol_id = resp.volume_id().expect("Volume should have ID");
-                volume_ids.push(vol_id.into());
-            }
-            Err(err) => {
-                return Err(ApplicationError::from_err("Error creating volume", err));
-            }
-        }
-    }
+    let volume_ids = volume_results
+        .into_iter()
+        .map(|result| match result {
+            Ok(resp) => resp
+                .volume_id()
+                .map(|id| id.to_string())
+                .ok_or_else(|| ApplicationError::new("Volume should have ID")),
+            Err(err) => Err(ApplicationError::from_err("Error creating volume", err)),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let volume_creation_wait = ec2_client
+    // Wait for all volumes to become available
+    let volume_wait_result = ec2_client
         .wait_until_volume_available()
         .set_volume_ids(Some(volume_ids))
         .wait(WAIT_DURATION)
@@ -290,58 +285,61 @@ pub async fn create_volumes_from_snapshots(
             ApplicationError::from_err("Error waiting for volumes to become available", err)
         })?;
 
-    volume_creation_wait
+    volume_wait_result
         .as_result()
         .map_err(|err| ApplicationError::from_err("Describe volumes error", err))
         .map(|r| r.volumes().to_owned())
 }
 
-#[allow(dead_code, unused)]
+/// Attaches newly created volumes to an instance
 pub async fn attach_new_volumes(
     ec2_client: &Client,
     instance: &Instance,
     volumes: Vec<Volume>,
 ) -> Result<(), ApplicationError> {
-    let detach_volume = async |instance_id: &str, device: &str| {
-        ec2_client
-            .detach_volume()
-            .instance_id(instance_id)
-            .device(device)
-            .send()
-            .await
-            .map_err(|err| ApplicationError::from_err("Error detaching volume", err))
-    };
+    let instance_id = instance
+        .instance_id()
+        .ok_or_else(|| ApplicationError::new("Instance should have ID"))?;
 
-    let attach_volume = async |instance_id: &str, volume_id: &str, device_mapping: &str| {
-        ec2_client
-            .attach_volume()
-            .instance_id(instance_id)
-            .volume_id(volume_id)
-            .device(device_mapping)
-            .send()
-            .await
-            .map_err(|err| ApplicationError::from_err("Error attaching volume", err))
-    };
+    for device_mapping in instance.block_device_mappings() {
+        let device_name = device_mapping
+            .device_name()
+            .ok_or_else(|| ApplicationError::new("Device should have name"))?;
 
-    for volume in instance.block_device_mappings() {
-        let device_name = volume.device_name();
+        // Find the replacement volume with matching device tag
         let replacement_volume = volumes
             .iter()
-            .find(|volume| volume.tags().iter().any(|tag| tag.value() == device_name))
+            .find(|vol| {
+                vol.tags()
+                    .iter()
+                    .any(|tag| tag.value() == Some(device_name))
+            })
             .ok_or_else(|| {
                 ApplicationError::new("Could not find volume with expected device tag")
             })?;
 
-        let instance_id = instance.instance_id().expect("Instance should have ID");
-        let device_name = device_name.expect("Device should exist");
-        let volume_id = volume
-            .ebs()
-            .expect("Ebs should exist")
+        let volume_id = replacement_volume
             .volume_id()
-            .expect("Volume ID should exist");
+            .ok_or_else(|| ApplicationError::new("Volume should have ID"))?;
 
-        detach_volume(instance_id, device_name).await?;
-        attach_volume(instance_id, volume_id, device_name).await?;
+        // Detach the old volume
+        ec2_client
+            .detach_volume()
+            .instance_id(instance_id)
+            .device(device_name)
+            .send()
+            .await
+            .map_err(|err| ApplicationError::from_err("Error detaching volume", err))?;
+
+        // Attach the new volume
+        ec2_client
+            .attach_volume()
+            .instance_id(instance_id)
+            .volume_id(volume_id)
+            .device(device_name)
+            .send()
+            .await
+            .map_err(|err| ApplicationError::from_err("Error attaching volume", err))?;
     }
 
     Ok(())
