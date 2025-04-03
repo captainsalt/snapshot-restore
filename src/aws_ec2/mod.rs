@@ -205,13 +205,6 @@ pub async fn get_most_recent_snapshots<'a>(
     let instance_snapshots = snapshots
         .into_iter()
         .filter(|snap| snap.state() == Some(&SnapshotState::Completed))
-        .filter(|snap| {
-            if let Some(volume_id) = snap.volume_id() {
-                instance_volume_ids.contains(&volume_id)
-            } else {
-                false
-            }
-        })
         .collect::<Vec<Snapshot>>();
 
     // Find most recent snapshot for each volume
