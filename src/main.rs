@@ -1,11 +1,11 @@
 mod aws_authentication;
 mod aws_ec2;
-mod cli;
+mod cli_args;
 use aws_authentication::*;
 use aws_config::SdkConfig;
 use aws_ec2::{find_instances_by_name, get_instance_snapshots, get_most_recent_snapshots};
 use clap::Parser;
-use cli::Args;
+use cli_args::Args;
 use config::Config;
 use std::{collections::HashMap, fs};
 use tokio::time::error::Error;
