@@ -56,11 +56,11 @@ async fn main() -> Result<(), ApplicationError> {
     for snapshot in selected_snapshots {
         println!(
             "---
-            Volume ID: {:?}
-            Snapshot ID: {:?}
+            Volume ID: {}
+            Snapshot ID: {}
             ---",
-            snapshot.volume_id(),
-            snapshot.snapshot_id()
+            snapshot.volume_id().unwrap(),
+            snapshot.snapshot_id().unwrap()
         )
     }
 
