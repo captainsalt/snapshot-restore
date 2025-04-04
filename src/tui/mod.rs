@@ -8,7 +8,7 @@ use crate::aws_ec2::app_err::ApplicationError;
 
 fn snapshot_to_string(snap: &Snapshot) -> String {
     format!(
-        "{} {} {}",
+        "{} {} {} {} GiB",
         snap.start_time().unwrap(),
         snap.tags()
             .iter()
@@ -16,7 +16,8 @@ fn snapshot_to_string(snap: &Snapshot) -> String {
             .unwrap()
             .value()
             .unwrap_or("<NO NAME>"),
-        snap.snapshot_id().unwrap()
+        snap.snapshot_id().unwrap(),
+        snap.volume_size().unwrap()
     )
 }
 
