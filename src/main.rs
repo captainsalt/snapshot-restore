@@ -14,7 +14,6 @@ use aws::{
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
-use futures::future::join_all;
 use std::{collections::HashMap, fs};
 use tui::pick_snapshots;
 
