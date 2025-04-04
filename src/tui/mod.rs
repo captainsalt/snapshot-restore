@@ -1,10 +1,9 @@
+use crate::app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     types::{Instance, Snapshot},
 };
 use inquire::Select;
-
-use crate::aws_ec2::app_err::ApplicationError;
 
 fn snapshot_to_string(snap: &Snapshot) -> String {
     format!(

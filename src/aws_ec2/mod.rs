@@ -1,5 +1,4 @@
-pub mod app_err;
-use app_err::ApplicationError;
+use crate::app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     client::Waiters,

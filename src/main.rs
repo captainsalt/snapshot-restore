@@ -1,10 +1,12 @@
+pub mod app_err;
 mod aws_authentication;
 mod aws_ec2;
 mod cli_args;
 mod tui;
+use app_err::ApplicationError;
 use aws_authentication::*;
 use aws_config::SdkConfig;
-use aws_ec2::{app_err::ApplicationError, find_instances_by_name, get_instance_snapshots};
+use aws_ec2::{find_instances_by_name, get_instance_snapshots};
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
