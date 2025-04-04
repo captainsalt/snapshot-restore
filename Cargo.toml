@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 aws-config = "1.6.1"
-aws-sdk-ec2 = "1.121.0"
-clap = { version = "4.5.34", features = ["derive"] }
+aws-sdk-ec2 = "1.121.1"
+clap = { version = "4.5.35", features = ["derive"] }
 config = "0.15.11"
 futures = "0.3.31"
 inquire = "0.7.5"
