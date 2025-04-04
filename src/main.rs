@@ -1,6 +1,7 @@
 mod aws_authentication;
 mod aws_ec2;
 mod cli_args;
+mod tui;
 use aws_authentication::*;
 use aws_config::SdkConfig;
 use aws_ec2::{
@@ -11,6 +12,7 @@ use clap::Parser;
 use cli_args::Args;
 use config::Config;
 use std::{collections::HashMap, fs};
+use tui::pick_snapshots;
 
 type AppConfig = HashMap<String, String>;
 
@@ -49,17 +51,16 @@ async fn main() -> Result<(), ApplicationError> {
 
     let instance_names = read_instance_names(&args.instance_file)
         .map_err(|err| ApplicationError::from_err("Error reading instances from file", err))?;
-    let instances = find_instances_by_name(&ec2_client, instance_names)
-        .await
-        .map_err(|err| ApplicationError::from_err("Could not find instances provided", err))?;
-
+    let instances = find_instances_by_name(&ec2_client, instance_names).await?;
     let instance = instances.first().expect("Should be at least one instance");
-    let snapshots = get_instance_snapshots(&ec2_client, instance).await;
-    let recent_snapshots = get_most_recent_snapshots(instance, &snapshots.unwrap())
-        .await
-        .expect("Snapshots should exist");
+    let snapshots = get_instance_snapshots(&ec2_client, instance).await?;
+    let selected_snapshots = pick_snapshots(ec2_client, instance, &snapshots).await?;
 
-    for snapshot in recent_snapshots {
+    // let recent_snapshots = get_most_recent_snapshots(instance, &snapshots.unwrap())
+    //     .await
+    //     .expect("Snapshots should exist");
+
+    for snapshot in selected_snapshots {
         println!(
             "---
             Volume ID: {:?}
