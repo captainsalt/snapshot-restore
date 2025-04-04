@@ -3,7 +3,7 @@ use app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, Snapshot, SnapshotState, Tag, TagSpecification, Volume},
+    types::{Filter, Instance, Snapshot, Tag, TagSpecification, Volume},
 };
 use futures::future::join_all;
 use std::time::Duration;
