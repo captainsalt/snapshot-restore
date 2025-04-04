@@ -162,49 +162,6 @@ pub async fn get_instance_snapshots(
     Ok(snapshots.snapshots.unwrap_or_default())
 }
 
-/// Gets the most recent snapshot for each volume attached to the instance
-pub async fn get_most_recent_snapshots(
-    instance: &Instance,
-    snapshots: &Vec<Snapshot>,
-) -> Result<Vec<Snapshot>, ApplicationError> {
-    let mut snapshots = snapshots.clone();
-
-    // Sort snapshots by start time (newest first)
-    snapshots.sort_by(|a, b| {
-        let a_time = a.start_time().expect("Snapshot should have start time");
-        let b_time = b.start_time().expect("Snapshot should have start time");
-        b_time.cmp(&a_time)
-    });
-
-    // Filter snapshots to only include completed ones
-    let completed_snapshots = snapshots
-        .into_iter()
-        .filter(|snap| snap.state() == Some(&SnapshotState::Completed))
-        .collect::<Vec<Snapshot>>();
-
-    // Get the most recent snapshot for each volume attached to the instance
-    let mut result_snapshots = Vec::new();
-    for device in instance.block_device_mappings() {
-        let volume_id = device
-            .ebs()
-            .ok_or_else(|| ApplicationError::new("EBS should exist"))?
-            .volume_id()
-            .ok_or_else(|| ApplicationError::new("Volume ID should exist"))?;
-
-        let snapshot = completed_snapshots
-            .iter()
-            .find(|snap| snap.volume_id().unwrap_or_default() == volume_id)
-            .cloned()
-            .ok_or_else(|| {
-                ApplicationError::new(format!("No snapshot found for volume {}", volume_id))
-            })?;
-
-        result_snapshots.push(snapshot);
-    }
-
-    Ok(result_snapshots)
-}
-
 /// Creates new volumes from snapshots and returns them
 pub async fn create_volumes_from_snapshots(
     ec2_client: &Client,

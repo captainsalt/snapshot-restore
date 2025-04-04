@@ -1,4 +1,3 @@
-Pick snapshot using TUI
 Specify region in CLI
 get_instance_snapshots Should filter by tag name
 Investigate the rust JSON

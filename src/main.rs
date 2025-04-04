@@ -4,9 +4,7 @@ mod cli_args;
 mod tui;
 use aws_authentication::*;
 use aws_config::SdkConfig;
-use aws_ec2::{
-    app_err::ApplicationError, find_instances_by_name, get_instance_snapshots,
-};
+use aws_ec2::{app_err::ApplicationError, find_instances_by_name, get_instance_snapshots};
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
@@ -54,10 +52,6 @@ async fn main() -> Result<(), ApplicationError> {
     let instance = instances.first().expect("Should be at least one instance");
     let snapshots = get_instance_snapshots(&ec2_client, instance).await?;
     let selected_snapshots = pick_snapshots(ec2_client, instance, &snapshots).await?;
-
-    // let recent_snapshots = get_most_recent_snapshots(instance, &snapshots.unwrap())
-    //     .await
-    //     .expect("Snapshots should exist");
 
     for snapshot in selected_snapshots {
         println!(
