@@ -133,26 +133,30 @@ pub async fn get_instance_snapshots(
     ec2_client: &Client,
     instance: &Instance,
 ) -> Result<Vec<Snapshot>, ApplicationError> {
-    let volume_ids = instance
-        .block_device_mappings()
+    let instance_name = instance
+        .tags()
         .iter()
-        .filter_map(|device| {
-            device
-                .ebs()
-                .and_then(|ebs| ebs.volume_id().map(|id| id.to_string()))
-        })
-        .collect::<Vec<_>>();
-
-    if volume_ids.is_empty() {
-        return Ok(Vec::new());
-    }
+        .find(|t| t.key() == Some("Name"))
+        .ok_or_else(|| {
+            ApplicationError::new(format!(
+                "No Name tag found for instance {:?}",
+                instance.instance_id()
+            ))
+        })?
+        .value()
+        .ok_or_else(|| {
+            ApplicationError::new(format!(
+                "Name tag has no value for instance {:?}",
+                instance.instance_id()
+            ))
+        })?;
 
     let snapshots = ec2_client
         .describe_snapshots()
         .filters(
             Filter::builder()
-                .name("volume-id")
-                .set_values(Some(volume_ids))
+                .name("tag:Name")
+                .values(instance_name)
                 .build(),
         )
         .send()
