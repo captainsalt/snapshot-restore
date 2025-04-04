@@ -6,7 +6,6 @@ use aws_authentication::*;
 use aws_config::SdkConfig;
 use aws_ec2::{
     app_err::ApplicationError, find_instances_by_name, get_instance_snapshots,
-    get_most_recent_snapshots,
 };
 use clap::Parser;
 use cli_args::Args;
