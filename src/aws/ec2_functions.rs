@@ -3,7 +3,9 @@ use crate::app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{Filter, Instance, Snapshot, Tag, TagSpecification, Volume},
+    types::{
+        Filter, Instance, InstanceState, InstanceStateName, Snapshot, Tag, TagSpecification, Volume,
+    },
 };
 use futures::future::join_all;
 use std::time::Duration;
@@ -251,6 +253,26 @@ pub async fn attach_new_volumes(
     instance: &Instance,
     volumes: Vec<Volume>,
 ) -> Result<(), ApplicationError> {
+    let is_stopped = ec2_client
+        .describe_instance_status()
+        .instance_ids(instance.instance_id().expect("Instance should have ID"))
+        .send()
+        .await
+        .map_err(ApplicationError::from)?
+        .instance_statuses()
+        .first()
+        .unwrap()
+        .instance_state
+        .clone()
+        .map(|state| state.name == Some(InstanceStateName::Stopped))
+        .unwrap();
+
+    if is_stopped {
+        return Err(ApplicationError::new(
+            "Instance must be stopped before attaching new volumes",
+        ));
+    }
+
     let instance_id = instance
         .instance_id()
         .ok_or_else(|| ApplicationError::new("Instance should have ID"))?;
