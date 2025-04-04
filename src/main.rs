@@ -1,12 +1,13 @@
 pub mod app_err;
-mod aws_authentication;
-mod aws_ec2;
+mod aws;
 mod cli_args;
 mod tui;
 use app_err::ApplicationError;
-use aws_authentication::*;
-use aws_config::{Region, SdkConfig};
-use aws_ec2::{find_instances_by_name, get_instance_snapshots};
+use aws::{
+    authentication::get_profile,
+    ec2_client::create_ec2_client,
+    ec2_functions::{find_instances_by_name, get_instance_snapshots},
+};
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
@@ -22,22 +23,6 @@ fn get_app_config() -> AppConfig {
         .unwrap()
         .try_deserialize::<HashMap<String, String>>()
         .unwrap()
-}
-
-fn create_ec2_client(
-    app_config: &AppConfig,
-    args: &Args,
-    aws_profile: &SdkConfig,
-) -> aws_sdk_ec2::Client {
-    let ec2_endpoint = app_config.get("EC2_ENDPOINT").cloned();
-    let region = Region::new(args.region.to_string());
-    let ec2_config = aws_sdk_ec2::config::Builder::from(aws_profile)
-        .region(Some(region))
-        .set_endpoint_url(ec2_endpoint)
-        .clone()
-        .build();
-
-    aws_sdk_ec2::client::Client::from_conf(ec2_config)
 }
 
 fn read_instance_names(input_file_path: &String) -> Result<Vec<String>, std::io::Error> {

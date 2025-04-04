@@ -11,3 +11,6 @@ config = "0.15.11"
 futures = "0.3.31"
 inquire = "0.7.5"
 tokio = { version = "1.44.1", features = ["full"] }
+rustls = "0.20.0"
+hyper-rustls = "0.23.0"
+aws-smithy-client = "0.54.1"  # Use a version compatible with your AWS SDK

@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
