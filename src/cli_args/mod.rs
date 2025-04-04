@@ -11,4 +11,13 @@ pub struct Args {
 
     #[arg(long, short('r'))]
     pub region: String,
+
+    #[arg(long, short('r'), default_value_t = true)]
+    pub dry_run: bool,
+
+    #[arg(long("start"), default_value_t = false)]
+    pub start_instances: bool,
+
+    #[arg(long("stop"), default_value_t = false)]
+    pub stop_instances: bool,
 }

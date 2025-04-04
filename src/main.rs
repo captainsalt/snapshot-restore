@@ -6,7 +6,9 @@ use app_err::ApplicationError;
 use aws::{
     authentication::get_profile,
     ec2_client::create_ec2_client,
-    ec2_functions::{find_instances_by_name, get_instance_snapshots},
+    ec2_functions::{
+        find_instances_by_name, get_instance_snapshots, start_instance, stop_instance,
+    },
 };
 use clap::Parser;
 use cli_args::Args;
@@ -42,19 +44,30 @@ async fn main() -> Result<(), ApplicationError> {
     let instance_names = read_instance_names(&args.instance_file)
         .map_err(|err| ApplicationError::from_err("Error reading instances from file", err))?;
     let instances = find_instances_by_name(&ec2_client, instance_names).await?;
-    let instance = instances.first().expect("Should be at least one instance");
-    let snapshots = get_instance_snapshots(&ec2_client, instance).await?;
-    let selected_snapshots = pick_snapshots(&ec2_client, instance, &snapshots).await?;
 
-    for snapshot in selected_snapshots {
-        println!(
-            "---
-            Volume ID: {}
-            Snapshot ID: {}
-            ---",
-            snapshot.volume_id().unwrap(),
-            snapshot.snapshot_id().unwrap()
-        )
+    for instance in instances {
+        if !args.dry_run && args.stop_instances {
+            stop_instance(&ec2_client, &instance).await?;
+        }
+
+        let snapshots = get_instance_snapshots(&ec2_client, &instance).await?;
+        let selected_snapshots = pick_snapshots(&ec2_client, &instance, &snapshots).await?;
+
+        for snapshot in selected_snapshots {
+            println!(
+                "
+                ---
+                Volume ID: {}
+                Snapshot ID: {}
+                ---",
+                snapshot.volume_id().unwrap(),
+                snapshot.snapshot_id().unwrap()
+            )
+        }
+
+        if !args.dry_run && args.start_instances {
+            start_instance(&ec2_client, &instance).await?;
+        }
     }
 
     Ok(())
