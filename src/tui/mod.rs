@@ -8,14 +8,14 @@ use crate::aws_ec2::app_err::ApplicationError;
 
 fn snapshot_to_string(snap: &Snapshot) -> String {
     format!(
-        "{} {:?} {}",
+        "{} {} {}",
+        snap.start_time().unwrap(),
         snap.tags()
             .iter()
             .find(|t| t.key() == Some("Name"))
             .unwrap()
             .value()
             .unwrap_or("<NO NAME>"),
-        snap.start_time().unwrap(),
         snap.snapshot_id().unwrap()
     )
 }
