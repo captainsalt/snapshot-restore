@@ -3,7 +3,7 @@ use clap::{Parser, command};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    #[arg(long, short)]
+    #[arg(long, short('p'))]
     pub profile: String,
 
     #[arg(long, short('f'))]
