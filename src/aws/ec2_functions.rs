@@ -1,11 +1,8 @@
-#![allow(unused)]
 use crate::app_err::ApplicationError;
 use aws_sdk_ec2::{
     Client,
     client::Waiters,
-    types::{
-        Filter, Instance, InstanceState, InstanceStateName, Snapshot, Tag, TagSpecification, Volume,
-    },
+    types::{Filter, Instance, InstanceStateName, Snapshot, Tag, TagSpecification, Volume},
 };
 use futures::future::join_all;
 use std::time::Duration;
@@ -32,23 +29,6 @@ async fn get_instances(
         .collect())
 }
 
-/// Finds EC2 instances by their instance IDs
-pub async fn find_instances_by_id(
-    ec2_client: &Client,
-    instance_ids: Vec<String>,
-) -> Result<Vec<Instance>, ApplicationError> {
-    get_instances(
-        ec2_client,
-        Some(vec![
-            Filter::builder()
-                .name("instance-id")
-                .set_values(Some(instance_ids))
-                .build(),
-        ]),
-    )
-    .await
-}
-
 /// Finds EC2 instances by their Name tags
 pub async fn find_instances_by_name(
     ec2_client: &Client,
@@ -67,15 +47,7 @@ pub async fn find_instances_by_name(
 }
 
 /// Stops an EC2 instance and waits until it's stopped
-pub async fn stop_instance(
-    ec2_client: &Client,
-    instance: &Instance,
-) -> Result<(), ApplicationError> {
-    let instance_id = instance
-        .instance_id
-        .as_deref()
-        .ok_or_else(|| ApplicationError::new("Missing instance ID"))?;
-
+pub async fn stop_instance(ec2_client: &Client, instance_id: &str) -> Result<(), ApplicationError> {
     ec2_client
         .stop_instances()
         .instance_ids(instance_id)
@@ -101,13 +73,8 @@ pub async fn stop_instance(
 /// Starts an EC2 instance and waits until it's running and status checks pass
 pub async fn start_instance(
     ec2_client: &Client,
-    instance: &Instance,
+    instance_id: &str,
 ) -> Result<(), ApplicationError> {
-    let instance_id = instance
-        .instance_id
-        .as_deref()
-        .ok_or_else(|| ApplicationError::new("Missing instance ID"))?;
-
     ec2_client
         .start_instances()
         .instance_ids(instance_id)
@@ -251,7 +218,7 @@ pub async fn create_volumes_from_snapshots(
 pub async fn attach_new_volumes(
     ec2_client: &Client,
     instance: &Instance,
-    volumes: Vec<Volume>,
+    volumes: &Vec<Volume>,
 ) -> Result<(), ApplicationError> {
     let is_stopped = ec2_client
         .describe_instance_status()

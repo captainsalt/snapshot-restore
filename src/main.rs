@@ -7,12 +7,14 @@ use aws::{
     authentication::get_profile,
     ec2_client::create_ec2_client,
     ec2_functions::{
-        find_instances_by_name, get_instance_snapshots, start_instance, stop_instance,
+        attach_new_volumes, create_volumes_from_snapshots, find_instances_by_name,
+        get_instance_snapshots, start_instance, stop_instance,
     },
 };
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
+use futures::future::join_all;
 use std::{collections::HashMap, fs};
 use tui::pick_snapshots;
 
@@ -46,14 +48,16 @@ async fn main() -> Result<(), ApplicationError> {
     let instances = find_instances_by_name(&ec2_client, instance_names).await?;
 
     for instance in instances {
+        let instance_id = instance.instance_id().unwrap().to_string();
+
         if !args.dry_run && args.stop_instances {
-            stop_instance(&ec2_client, &instance).await?;
+            stop_instance(&ec2_client, &instance_id).await?;
         }
 
         let snapshots = get_instance_snapshots(&ec2_client, &instance).await?;
         let selected_snapshots = pick_snapshots(&ec2_client, &instance, &snapshots).await?;
 
-        for snapshot in selected_snapshots {
+        for snapshot in selected_snapshots.iter() {
             println!(
                 "
                 ---
@@ -65,8 +69,13 @@ async fn main() -> Result<(), ApplicationError> {
             )
         }
 
+        if !args.dry_run {
+            let volumes = create_volumes_from_snapshots(&ec2_client, &selected_snapshots).await?;
+            attach_new_volumes(&ec2_client, &instance, &volumes).await?;
+        }
+
         if !args.dry_run && args.start_instances {
-            start_instance(&ec2_client, &instance).await?;
+            let _ = start_instance(&ec2_client, &instance_id);
         }
     }
 
