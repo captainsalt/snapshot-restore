@@ -6,9 +6,9 @@ pub struct Args {
     #[arg(long, short)]
     pub profile: String,
 
-    #[arg(long)]
-    pub regions: Vec<String>,
-
     #[arg(long, short('f'))]
     pub instance_file: String,
+
+    #[arg(long, short('r'))]
+    pub region: String,
 }

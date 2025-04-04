@@ -21,7 +21,7 @@ fn snapshot_to_string(snap: &Snapshot) -> String {
 }
 
 pub async fn pick_snapshots(
-    ec2_client: Client,
+    ec2_client: &Client,
     instance: &Instance,
     snapshots: &Vec<Snapshot>,
 ) -> Result<Vec<Snapshot>, ApplicationError> {
