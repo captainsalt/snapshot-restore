@@ -57,17 +57,16 @@ pub async fn pick_snapshots(
         );
         let snapshot = Select::new(&select_prompt, matching_snapshots).prompt();
 
-        match snapshot {
-            Ok(choice) => {
-                let snapshot = snapshots
-                    .iter()
-                    .find(|s| snapshot_to_string(s) == choice)
-                    .unwrap();
+        let Ok(snapshot_string) = snapshot else {
+            panic!("Invalid option selected")
+        };
 
-                snapshot_selections.push(snapshot.to_owned())
-            }
-            Err(err) => panic!("Invalid snapshot selected: {}", err),
-        }
+        let selected_snapshot = snapshots
+            .iter()
+            .find(|s| snapshot_to_string(s) == snapshot_string)
+            .unwrap();
+
+        snapshot_selections.push(selected_snapshot.to_owned())
     }
 
     Ok(snapshot_selections)
