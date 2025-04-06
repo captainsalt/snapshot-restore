@@ -48,33 +48,20 @@ async fn main() -> Result<(), ApplicationError> {
 
     for instance in instances {
         let instance_id = instance.instance_id().unwrap().to_string();
-
-        if !args.dry_run && args.stop_instances {
-            stop_instance(&ec2_client, &instance_id).await?;
-        }
-
         let snapshots = get_instance_snapshots(&ec2_client, &instance).await?;
         let selected_snapshots = pick_snapshots(&ec2_client, &instance, &snapshots).await?;
 
-        for snapshot in selected_snapshots.iter() {
-            println!(
-                "
-                ---
-                Volume ID: {}
-                Snapshot ID: {}
-                ---",
-                snapshot.volume_id().unwrap(),
-                snapshot.snapshot_id().unwrap()
-            )
-        }
-
         if !args.dry_run {
+            if args.stop_instances {
+                stop_instance(&ec2_client, &instance_id).await?;
+            }
+
             let volumes = create_volumes_from_snapshots(&ec2_client, &selected_snapshots).await?;
             attach_new_volumes(&ec2_client, &instance, &volumes).await?;
-        }
 
-        if !args.dry_run && args.start_instances {
-            let _ = start_instance(&ec2_client, &instance_id);
+            if args.start_instances {
+                start_instance(&ec2_client, &instance_id).await?;
+            }
         }
     }
 
