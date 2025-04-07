@@ -11,6 +11,7 @@ use aws::{
         get_instance_snapshots, start_instance, stop_instance,
     },
 };
+use aws_sdk_ec2::types::Instance;
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
@@ -35,6 +36,15 @@ fn read_instance_names(input_file_path: &String) -> Result<Vec<String>, std::io:
         .collect())
 }
 
+fn instance_name(instance: &Instance) -> &str {
+    instance
+        .tags()
+        .iter()
+        .find(|tag| tag.key() == Some("Name"))
+        .and_then(|tag| tag.value())
+        .unwrap_or(instance.instance_id().unwrap())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ApplicationError> {
     let args = Args::parse();
@@ -53,6 +63,7 @@ async fn main() -> Result<(), ApplicationError> {
 
         if !args.dry_run {
             if args.stop_instances {
+                println!("Stopping instance {}", instance_name(&instance));
                 stop_instance(&ec2_client, &instance_id).await?;
             }
 
@@ -60,6 +71,7 @@ async fn main() -> Result<(), ApplicationError> {
             attach_new_volumes(&ec2_client, &instance, &volumes).await?;
 
             if args.start_instances {
+                println!("Starting instance {}", instance_name(&instance));
                 start_instance(&ec2_client, &instance_id).await?;
             }
         }
