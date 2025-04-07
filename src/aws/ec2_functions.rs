@@ -218,7 +218,7 @@ pub async fn create_volumes_from_snapshots(
 pub async fn attach_new_volumes(
     ec2_client: &Client,
     instance: &Instance,
-    volumes: &Vec<Volume>,
+    volumes: &[Volume],
 ) -> Result<(), ApplicationError> {
     let is_stopped = ec2_client
         .describe_instance_status()

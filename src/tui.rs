@@ -23,7 +23,7 @@ fn snapshot_to_string(snap: &Snapshot) -> String {
 pub async fn pick_snapshots(
     ec2_client: &Client,
     instance: &Instance,
-    snapshots: &Vec<Snapshot>,
+    snapshots: &[Snapshot],
 ) -> Result<Vec<Snapshot>, ApplicationError> {
     let mut snapshot_selections = Vec::new();
 
