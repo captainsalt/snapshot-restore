@@ -72,7 +72,7 @@ async fn main() -> Result<(), ApplicationError> {
 
             if args.start_instances {
                 println!("Starting instance {}", instance_name(&instance));
-                start_instance(&ec2_client, &instance_id).await?;
+                let _ = start_instance(&ec2_client, &instance_id);
             }
         }
     }
