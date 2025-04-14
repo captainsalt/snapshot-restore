@@ -15,6 +15,7 @@ pub struct Args {
     #[arg(long, short('r'))]
     pub region: String,
 
+    // Execute without making changes to the environment. Defaults to true
     #[arg(long, default_value_t = true, required(false))]
     pub dry_run: bool,
 
