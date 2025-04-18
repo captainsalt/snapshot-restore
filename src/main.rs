@@ -61,7 +61,7 @@ async fn main() -> Result<(), ApplicationError> {
         let snapshots = get_instance_snapshots(&ec2_client, &instance).await?;
         let selected_snapshots = pick_snapshots(&ec2_client, &instance, &snapshots).await?;
 
-        if args.dry_run {
+        if !args.execute {
             continue;
         }
 
