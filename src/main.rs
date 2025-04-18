@@ -49,7 +49,7 @@ fn instance_name(instance: &Instance) -> &str {
 async fn main() -> Result<(), ApplicationError> {
     let args = Args::parse();
     let app_config = get_app_config();
-    let aws_profile = get_profile(Some(&args.profile)).await;
+    let aws_profile = get_profile(Some(args.profile.clone()), Some(args.region.clone())).await;
     let ec2_client = create_ec2_client(&app_config, &args, &aws_profile);
 
     let instance_names = read_instance_names(&args.instance_file)
