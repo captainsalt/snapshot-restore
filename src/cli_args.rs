@@ -15,7 +15,7 @@ pub struct Args {
     #[arg(long, short('r'))]
     pub region: String,
 
-    /// Without this flag the application will not make any changes to the enrionment
+    /// Without this flag the application will not make any changes to the environment
     #[arg(long)]
     pub execute: bool,
 
