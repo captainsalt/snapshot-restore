@@ -11,7 +11,7 @@ pub async fn get_profile(profile: Option<String>, region: Option<String>) -> Sdk
     let region = match (provided_region, default_region) {
         (Some(provided_region), _) => provided_region,
         (_, Some(default_region)) => default_region,
-        (None, None) => panic!("No regions found"),
+        (None, None) => panic!("Please specify a region or add a default region to the profile"),
     };
 
     aws_config::defaults(BehaviorVersion::latest())
