@@ -214,8 +214,8 @@ pub async fn create_volumes_from_snapshots(
         .map(|r| r.volumes().to_owned())
 }
 
-/// Attaches newly created volumes to an instance
-pub async fn attach_new_volumes(
+/// Attaches newly created volumes to an instance and replaces old ones
+pub async fn replace_volumes(
     ec2_client: &Client,
     instance: &Instance,
     volumes: &[Volume],

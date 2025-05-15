@@ -7,8 +7,8 @@ use aws::{
     authentication::get_profile,
     ec2_client::create_ec2_client,
     ec2_functions::{
-        attach_new_volumes, create_volumes_from_snapshots, find_instances_by_name,
-        get_instance_snapshots, start_instance, stop_instance,
+        create_volumes_from_snapshots, find_instances_by_name, get_instance_snapshots,
+        replace_volumes, start_instance, stop_instance,
     },
 };
 use aws_sdk_ec2::types::Instance;
@@ -71,7 +71,7 @@ async fn main() -> Result<(), ApplicationError> {
         }
 
         let volumes = create_volumes_from_snapshots(&ec2_client, &selected_snapshots).await?;
-        attach_new_volumes(&ec2_client, &instance, &volumes).await?;
+        replace_volumes(&ec2_client, &instance, &volumes).await?;
 
         if args.start_instances {
             println!("Starting instance {}", instance_name(&instance));
