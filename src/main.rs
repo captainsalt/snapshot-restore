@@ -47,7 +47,7 @@ fn instance_name(instance: &Instance) -> &str {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), ApplicationError> {
     let args = Args::parse();
     let app_config = get_app_config();
     let aws_profile = get_profile(Some(args.profile.clone()), Some(args.region.clone())).await;
