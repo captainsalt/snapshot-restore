@@ -15,7 +15,8 @@ use aws_sdk_ec2::types::Instance;
 use clap::Parser;
 use cli_args::Args;
 use config::Config;
-use std::{collections::HashMap, fs};
+use futures::future::join_all;
+use std::{collections::HashMap, error::Error, fs};
 use tui::pick_snapshots;
 
 type AppConfig = HashMap<String, String>;
@@ -46,7 +47,7 @@ fn instance_name(instance: &Instance) -> &str {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ApplicationError> {
+async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let app_config = get_app_config();
     let aws_profile = get_profile(Some(args.profile.clone()), Some(args.region.clone())).await;
@@ -56,7 +57,7 @@ async fn main() -> Result<(), ApplicationError> {
         .map_err(|err| ApplicationError::from_err("Error reading instances from file", err))?;
     let instances = find_instances_by_name(&ec2_client, instance_names).await?;
 
-    for instance in instances {
+    for instance in instances.iter() {
         let instance_id = instance.instance_id().unwrap().to_string();
         let snapshots = get_instance_snapshots(&ec2_client, &instance).await?;
         let selected_snapshots = pick_snapshots(&ec2_client, &instance, &snapshots).await?;
@@ -72,11 +73,17 @@ async fn main() -> Result<(), ApplicationError> {
 
         let volumes = create_volumes_from_snapshots(&ec2_client, &selected_snapshots).await?;
         replace_volumes(&ec2_client, &instance, &volumes).await?;
+    }
 
-        if args.start_instances {
-            println!("Starting instance {}", instance_name(&instance));
-            drop(start_instance(&ec2_client, &instance_id));
-        }
+    if args.start_instances {
+        let start_futures = instances
+            .iter()
+            .map(|i| start_instance(&ec2_client, i.instance_id().unwrap()));
+
+        join_all(start_futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<()>, ApplicationError>>()?;
     }
 
     Ok(())
