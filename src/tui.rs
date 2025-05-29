@@ -55,20 +55,17 @@ pub async fn pick_snapshots(
             "Please select snapshot to restore to {}",
             device.device_name().unwrap()
         );
-        let snapshot_selection = Select::new(&select_prompt, matching_snapshots).prompt();
 
-        match snapshot_selection {
-            Ok(snapshot_string) => {
-                let selected_snapshot = snapshots
-                    .iter()
-                    .find(|s| snapshot_to_string(s) == snapshot_string)
-                    .unwrap();
+        let Ok(snapshot_string) = Select::new(&select_prompt, matching_snapshots).prompt() else {
+            panic!("Invalid option selected. This should never happen");
+        };
 
-                snapshot_selections.push(selected_snapshot.to_owned())
-            }
+        let selected_snapshot = snapshots
+            .iter()
+            .find(|s| snapshot_to_string(s) == snapshot_string)
+            .unwrap();
 
-            Err(error) => panic!("{:?}", error),
-        }
+        snapshot_selections.push(selected_snapshot.to_owned())
     }
 
     Ok(snapshot_selections)
